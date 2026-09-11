@@ -153,6 +153,13 @@ app.innerHTML+=`<div class="actions"><button class="secondary" onclick="changeWe
 function mark(d,i){let v={weight:document.getElementById("w"+i).value,result:document.getElementById("r"+i).value,rpe:document.getElementById("p"+i).value,pr:document.getElementById("pr"+i).value==="PR",notes:document.getElementById("n"+i).value,done:true,date:new Date().toLocaleDateString()};log[k(d,i)]=v;save();render()}
 function clearEx(d,i){delete log[k(d,i)];save();render()}
 function changeWeek(n){week=Math.max(1,week+n);phase=weekPhase(week);save();render()}
+  function startWorkout(d){
+  day=d;
+  save();
+  renderTabs();
+  workout(d);
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 function today(){let completed=Object.keys(log).filter(x=>x.startsWith(week+"-")).length;let total=Object.values(program).reduce((a,p)=>a+p.ex.length,0);
 app.innerHTML=`<div class="card"><h2>Week ${week} dashboard</h2><div class="muted">Phase: <b>${phase}</b> • 6-week cycle: Weeks 1–4 Build → Week 5 Deload → Week 6 Testing</div><div class="statgrid"><div class="stat"><b>${week}</b><span class="muted">Current week</span></div><div class="stat"><b>${completed}</b><span class="muted">Exercise logs</span></div><div class="stat"><b>${Object.values(log).filter(x=>x.pr).length}</b><span class="muted">PRs</span></div><div class="stat"><b>${body.length?body[body.length-1].weight+" kg":"—"}</b><span class="muted">Latest weight</span></div></div></div>
 <div class="card"><h2>Training cycle</h2>
