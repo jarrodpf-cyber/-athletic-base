@@ -1,0 +1,11 @@
+{
+  "name": "Athletic Base",
+  "short_name": "Athletic Base",
+  "description": "Personal strength, power, speed, running and sport training tracker.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#111827",
+  "orientation": "portrait",
+  "icons": []
+}

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Athletic Base">
+<title>Athletic Base — Personal Training App</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--green:#16a34a;--orange:#ea580c}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+header{background:#111827;color:#fff;padding:22px 16px 16px;position:sticky;top:0;z-index:10}header h1{margin:0 0 3px;font-size:23px}header p{margin:0;color:#cbd5e1;font-size:13px}
+nav{display:flex;gap:7px;overflow:auto;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:72px;z-index:9}nav button{border:0;background:#eef2f7;padding:9px 12px;border-radius:999px;white-space:nowrap;font-weight:700;color:#374151}nav button.active{background:var(--accent);color:#fff}
+main{max-width:760px;margin:auto;padding:14px 13px 90px}.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:13px;box-shadow:0 2px 8px #00000008}
+h2{font-size:19px;margin:0 0 12px}h3{font-size:15px;margin:0 0 4px}.muted{color:var(--muted);font-size:12px}.tiny{font-size:11px;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.tag{font-size:11px;background:#eef2ff;color:#3730a3;border-radius:8px;padding:5px 7px;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:9px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
+input,select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;font-size:15px;background:white}label{font-size:10px;color:var(--muted);display:block;margin-bottom:4px}
+button.primary,button.secondary,button.danger{border:0;border-radius:10px;padding:10px 13px;font-weight:750}button.primary{background:var(--accent);color:#fff}button.secondary{background:#eef2f7;color:#374151}button.danger{background:#fee2e2;color:#991b1b}
+.actions{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}.done{color:var(--green);font-weight:800}
+.statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.stat{padding:13px;background:#f8fafc;border-radius:12px}.stat b{display:block;font-size:21px}.bar{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:7px}.bar>span{display:block;height:100%;background:var(--accent)}
+.exercise{border-top:1px solid var(--line);padding:13px 0}.exercise:first-child{border-top:0}.weeknav{display:flex;justify-content:space-between;align-items:center}.pr{background:#ecfdf5;color:#166534;border-radius:8px;padding:4px 7px;font-size:10px;font-weight:800}
+.hidden{display:none}.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.daycell{padding:8px 3px;text-align:center;border-radius:9px;background:#f8fafc;font-size:10px}.daycell.on{background:#dbeafe;color:#1d4ed8;font-weight:800}.daycell.done{background:#dcfce7;color:#166534}
+.list{margin:0;padding-left:18px}.list li{margin:5px 0;font-size:13px}
+@media(min-width:600px){.statgrid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header><h1>⚡ Athletic Base</h1><p>Strength • Power • Speed • Running • Field • Touch Footy</p></header>
+<nav id="tabs"></nav>
+<main id="app"></main>
+<script>
+const program={
+1:{name:"Lower-body power",type:"GYM",ex:[
+["Broad jumps","3×3","Bodyweight — max distance",""],
+["Trap-bar deadlift","4×3","80–85% 1RM",""],
+["Bulgarian split squat","3×5/leg","~7–8/10 • 2 reps left",""],
+["Squat","3×6","~70–75% 1RM",""],
+["Nordic curl","3×4–6","Bodyweight; assist if needed",""],
+["Pallof press","3×8/side","Moderate — strict",""],
+["Sled push","4×15–20 m","Heavy, but don't crawl",""]
+]},
+2:{name:"Upper-body power",type:"GYM",ex:[
+["Med-ball chest pass","4×3","Explosive","9 kg"],
+["Push press","4×3","70–75% 1RM","60 kg"],
+["Bench press","4×4","75–80% 1RM","100 kg"],
+["Weighted chin-up","3×5","~7–8 clean reps max","+10 kg"],
+["Single-arm DB row","3×6–8","1–3 reps in reserve","37.5 kg"],
+["Landmine rotation","3×5/side","Light/moderate — speed","10 kg"],
+["Farmer carry","3×30–40 m","Heavy, controlled","80 kg"]
+]},
+3:{name:"Full-body power",type:"GYM",ex:[
+["Box jumps","4×3","Maximum height",""],
+["Hang power clean","4×3","60–70% 1RM",""],
+["Front-foot elevated split squat","3×6/leg","~7–8/10 • 2 reps left",""],
+["Hip thrust","3×5","~75–80% 1RM",""],
+["Single-leg RDL","3×6/leg","2–3 reps left",""],
+["Rotational med-ball throw","4×3/side","2–5 kg • explosive",""],
+["Copenhagen plank","3×20–30 sec/side","Bodyweight",""]
+]},
+4:{name:"Zone 2 run",type:"RUN",ex:[
+["Easy run","1 session","Conversational pace",""],
+["Optional strides","4×15–20 sec","Fast but relaxed",""]
+]},
+5:{name:"Field speed + plyometrics",type:"FIELD",ex:[
+["Acceleration sprints","6×20 m","Full recovery • explosive",""],
+["Flying sprints","4×30 m","Build then fast",""],
+["Lateral bounds","3×5/side","Stick landing",""],
+["Pogo jumps","3×10","Quick contacts",""],
+["Change-of-direction drill","4 reps/side","Sharp, controlled",""]
+]},
+6:{name:"Recovery / mobility",type:"RECOVERY",ex:[
+["Hip mobility","8–10 min","Easy",""],
+["Leg mobility","8–10 min","Easy",""],
+["Walking / easy cycle","20–30 min","Recovery pace",""]
+]},
+7:{name:"Touch footy / OzTag",type:"SPORT",ex:[
+["Touch footy / OzTag","1 session","Record duration + RPE",""],
+["Post-game recovery","5–10 min","Easy mobility",""]
+]}
+};
+let week=+localStorage.getItem("week")||1, day=+localStorage.getItem("day")||1;
+let phase=localStorage.getItem("phase")||"Build";
+let cycleStart=+localStorage.getItem("cycleStart")||1;
+
+let log=JSON.parse(localStorage.getItem("log")||"{}"), body=JSON.parse(localStorage.getItem("body")||"[]"), goals=JSON.parse(localStorage.getItem("goals")||'{"weight":"","fiveK":"","sprint":"","jump":""}');
+const app=document.getElementById("app"),tabs=document.getElementById("tabs");
+function save(){localStorage.setItem("log",JSON.stringify(log));localStorage.setItem("body",JSON.stringify(body));localStorage.setItem("goals",JSON.stringify(goals));localStorage.setItem("week",week);localStorage.setItem("day",day);localStorage.setItem("phase",phase);localStorage.setItem("cycleStart",cycleStart)}
+function weekPhase(w){let n=w-cycleStart; if(n<0)n=0; let pos=n%6; return pos===4?"Deload":pos===5?"Testing":"Build"}
+function recommendation(d,i){let ex=program[d].ex[i], vals=[]; for(let w=week-1;w>=Math.max(1,week-6);w--){let v=log[k(d,i,w)];if(v&&v.weight){vals.push(v);break}}
+ if(phase==="Deload") return "Reduce load ~10–20% • keep speed/technique crisp";
+ if(phase==="Testing") return "Test performance • no grinding • record best clean result";
+ if(!vals.length)return "Start from current baseline; leave 1–3 reps in reserve";
+ let raw=vals[0].weight, num=parseFloat(String(raw).replace(/[^0-9.]/g,""));
+ if(!num)return "Beat last week's quality or add a small load";
+ let step=/bench|trap-bar|squat|hip thrust|push press|deadlift/i.test(ex[0])?2.5:/chin|row/i.test(ex[0])?2.5:0;
+ return step?`Last: ${raw} → target about ${num+step} kg if all reps were clean`:`Last: ${raw} → beat reps, distance or quality before adding load`;
+}
+function k(d,i,w=week){return `${w}-${d}-${i}`}
+function renderTabs(){tabs.innerHTML="";["Today","Day 1","Day 2","Day 3","Run","Field","Sport","Progress"].forEach((x,i)=>{let b=document.createElement("button");b.textContent=x;b.className=((i===0&&!location.hash)||([1,2,3].includes(i)&&day===i&&!location.hash)||i>3&&location.hash===x.toLowerCase())?"active":"";b.onclick=()=>{if(i===0){location.hash="";render()}else if(i<=3){location.hash="";day=i;save();render()}else{location.hash=x.toLowerCase();render()}};tabs.appendChild(b)})}
+function workout(d=day){
+let p=program[d];app.innerHTML=`<div class="card"><div class="weeknav"><div><h2>Week ${week} • ${p.name}</h2><div class="muted">${p.type}</div></div><span class="tag">${p.type}</span></div></div>`;
+p.ex.forEach((e,i)=>{let v=log[k(d,i)]||{};app.innerHTML+=`<div class="card exercise"><div class="row"><div><h3>${e[0]}</h3><div class="muted">${e[1]} • ${e[2]}</div><div class="tiny">💡 ${recommendation(d,i)}</div></div>${v.done?'<span class="done">✓</span>':''}</div>
+<div class="grid"><div><label>Weight / load / time</label><input id="w${i}" value="${v.weight||e[3]||""}" placeholder="Enter result"></div><div><label>Reps / distance / time</label><input id="r${i}" value="${v.result||""}" placeholder="e.g. 4×3"></div></div>
+<div class="grid3"><div><label>RPE</label><input id="p${i}" value="${v.rpe||""}" placeholder="1–10"></div><div><label>Best result?</label><select id="pr${i}"><option value="">No</option><option ${v.pr?"selected":""}>PR</option></select></div><div><label>Notes</label><input id="n${i}" value="${v.notes||""}" placeholder="Feel / speed"></div></div>
+<div class="actions"><button class="primary" onclick="mark(${d},${i})">${v.done?"Update":"Save"}</button><button class="secondary" onclick="clearEx(${d},${i})">Clear</button></div></div>`});
+app.innerHTML+=`<div class="actions"><button class="secondary" onclick="changeWeek(-1)">← Previous week</button><button class="primary" onclick="changeWeek(1)">Next week →</button></div>`;
+}
+function mark(d,i){let v={weight:document.getElementById("w"+i).value,result:document.getElementById("r"+i).value,rpe:document.getElementById("p"+i).value,pr:document.getElementById("pr"+i).value==="PR",notes:document.getElementById("n"+i).value,done:true,date:new Date().toLocaleDateString()};log[k(d,i)]=v;save();render()}
+function clearEx(d,i){delete log[k(d,i)];save();render()}
+function changeWeek(n){week=Math.max(1,week+n);phase=weekPhase(week);save();render()}
+function today(){let completed=Object.keys(log).filter(x=>x.startsWith(week+"-")).length;let total=Object.values(program).reduce((a,p)=>a+p.ex.length,0);
+app.innerHTML=`<div class="card"><h2>Week ${week} dashboard</h2><div class="muted">Phase: <b>${phase}</b> • 6-week cycle: 4 build → deload → test</div><div class="statgrid"><div class="stat"><b>${week}</b><span class="muted">Current week</span></div><div class="stat"><b>${completed}</b><span class="muted">Exercise logs</span></div><div class="stat"><b>${Object.values(log).filter(x=>x.pr).length}</b><span class="muted">PRs</span></div><div class="stat"><b>${body.length?body[body.length-1].weight+" kg":"—"}</b><span class="muted">Latest weight</span></div></div></div>
+<div class="card"><h2>Training cycle</h2>
+<div class="grid"><div><label>Current phase</label><select id="phaseSel"><option ${phase==="Build"?"selected":""}>Build</option><option ${phase==="Deload"?"selected":""}>Deload</option><option ${phase==="Testing"?"selected":""}>Testing</option></select></div>
+<div><label>Cycle week</label><input value="${((week-cycleStart)%6+6)%6+1} / 6" disabled></div></div>
+<div class="actions"><button class="primary" onclick="savePhase()">Set phase</button><button class="secondary" onclick="startNewCycle()">Start new 6-week cycle</button></div>
+<div class="tiny">Build = progressive overload • Deload = recover while keeping movement • Testing = measure strength, speed and fitness.</div></div>
+<div class="card"><h2>Weekly schedule</h2><div class="calendar">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((x,i)=>`<div class="daycell ${i===1?"on":""}">${x}<br><b>${i===0?"Gym":i===1?"Touch":i===2?"Run":i===3?"Gym":i===4?"Field":i===5?"Gym":"Recovery"}</b></div>`).join("")}</div></div>
+<div class="card"><h2>Start today's session</h2><div class="muted">Day ${day}: ${program[day].name}</div><div class="actions"><button class="primary" onclick="location.hash='';render()">Start workout</button></div></div>
+<div class="card"><h2>Quick body-weight check</h2><div class="grid"><div><label>Weight (kg)</label><input id="bw" placeholder="e.g. 90"></div><div><label>Optional note</label><input id="bn" placeholder="Morning / after training"></div></div><div class="actions"><button class="primary" onclick="addBody()">Save weight</button></div></div>
+<div class="card"><h2>Goals</h2><div class="grid"><div><label>Target weight (kg)</label><input id="gw" value="${goals.weight}"></div><div><label>Target 5 km</label><input id="g5" value="${goals.fiveK}" placeholder="e.g. 22:00"></div><div><label>Target sprint</label><input id="gs" value="${goals.sprint}" placeholder="e.g. 20 m"></div><div><label>Target jump</label><input id="gj" value="${goals.jump}" placeholder="e.g. 2.6 m"></div></div><div class="actions"><button class="primary" onclick="saveGoals()">Save goals</button></div></div>`;
+}
+function addBody(){let x=parseFloat(document.getElementById("bw").value);if(!x)return;body.push({weight:x,date:new Date().toLocaleDateString(),note:document.getElementById("bn").value});save();render()}
+function saveGoals(){goals={weight:document.getElementById("gw").value,fiveK:document.getElementById("g5").value,sprint:document.getElementById("gs").value,jump:document.getElementById("gj").value};save();render()}
+function savePhase(){phase=document.getElementById("phaseSel").value;save();render()}
+function startNewCycle(){cycleStart=week;phase="Build";save();render()}
+function progress(){let prs=Object.values(log).filter(x=>x.pr);app.innerHTML=`<div class="card"><h2>📈 Performance</h2><div class="muted">Phase: <b>${phase}</b> • Test results can be compared across cycles.</div><div class="statgrid"><div class="stat"><b>${prs.length}</b><span class="muted">PRs</span></div><div class="stat"><b>${Object.keys(log).length}</b><span class="muted">Logged exercises</span></div><div class="stat"><b>${body.length?body[body.length-1].weight:"—"}</b><span class="muted">Latest kg</span></div><div class="stat"><b>${week}</b><span class="muted">Week</span></div></div></div>
+<div class="card"><h2>Strength baseline</h2><ul class="list"><li>Bench press — <b>100 kg × 4</b></li><li>Push press — <b>60 kg × 3</b></li><li>Weighted chin-up — <b>+10 kg × 5</b></li><li>Single-arm DB row — <b>37.5 kg</b></li><li>Med-ball chest pass — <b>9 kg</b></li><li>Landmine rotation — <b>10 kg</b></li><li>Farmer carry — <b>80 kg</b></li></ul></div>
+<div class="card"><h2>🧪 Testing week protocol</h2>
+<ul class="list">
+<li><b>5 km:</b> one all-out controlled effort; record time.</li>
+<li><b>20 m sprint:</b> 3–5 attempts, full recovery; record best.</li>
+<li><b>Broad jump:</b> 3 attempts; record best distance.</li>
+<li><b>Box jump:</b> 3–5 quality attempts; record highest safe height.</li>
+<li><b>Bench press:</b> work to a strong clean 3–5RM, not a grinder.</li>
+<li><b>Trap-bar deadlift:</b> strong clean 3–5RM if back feels good; stop if pain.</li>
+<li><b>Push press:</b> work to a crisp heavy 3RM.</li>
+<li><b>Weighted chin-up:</b> test best clean 3–5RM load.</li>
+</ul>
+<div class="tiny">Keep sprint/jump tests fresh. Separate hard strength and 5K testing when possible. If pain appears, stop the test rather than chasing a number.</div></div>
+<div class="card"><h2>🏃 Athletic markers</h2><div class="grid"><div><label>5 km best</label><input id="m5" placeholder="e.g. 24:20"></div><div><label>20 m sprint</label><input id="m20" placeholder="e.g. 3.2 sec"></div><div><label>Broad jump</label><input id="mb" placeholder="e.g. 2.45 m"></div><div><label>Box jump</label><input id="mx" placeholder="e.g. 70 cm"></div></div><div class="actions"><button class="primary" onclick="saveMarkers()">Save markers</button></div></div>
+<div class="card"><h2>🏆 Recent PRs</h2>${prs.length?prs.slice(-10).reverse().map(x=>`<div class="exercise"><span class="pr">PR</span> <b>${x.weight||"Result"}</b><div class="muted">${x.date||""} • ${x.notes||""}</div></div>`).join(""):"<div class='muted'>Your first PR will appear here.</div>"}</div>
+<div class="card"><h2>⚙️ Data</h2><div class="muted">Stored locally on this device/browser.</div><div class="actions"><button class="secondary" onclick="exportData()">Export backup</button><button class="danger" onclick="resetAll()">Reset all data</button></div></div>`}
+function saveMarkers(){localStorage.setItem("markers",JSON.stringify({fiveK:document.getElementById("m5").value,sprint:document.getElementById("m20").value,broad:document.getElementById("mb").value,box:document.getElementById("mx").value}));render()}
+function exportData(){let all={week,day,log,body,goals,markers:JSON.parse(localStorage.getItem("markers")||"{}")};let blob=new Blob([JSON.stringify(all,null,2)],{type:"application/json"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="athletic-base-backup.json";a.click()}
+function resetAll(){if(confirm("Delete all workout data?")){localStorage.clear();location.reload()}}
+function render(){renderTabs();let h=location.hash;if(h==="#progress")progress();else if(h==="#run")workout(4);else if(h==="#field")workout(5);else if(h==="#sport")workout(7);else if(h==="#recovery")workout(6);else if(h==="#gym")workout(1);else if(h==="")today();else workout(day)}
+window.addEventListener("hashchange",render);render();
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script></body>
+</html>
