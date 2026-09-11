@@ -22,6 +22,16 @@ button.primary,button.secondary,button.danger{border:0;border-radius:10px;paddin
 .hidden{display:none}.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.daycell{padding:8px 3px;text-align:center;border-radius:9px;background:#f8fafc;font-size:10px}.daycell.on{background:#dbeafe;color:#1d4ed8;font-weight:800}.daycell.done{background:#dcfce7;color:#166534}
 .list{margin:0;padding-left:18px}.list li{margin:5px 0;font-size:13px}
 @media(min-width:600px){.statgrid{grid-template-columns:repeat(4,1fr)}}
+
+.workout-library{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.workout-card{border:1px solid var(--line);background:#f8fafc;border-radius:13px;padding:13px;text-align:left}
+.workout-card button{width:100%;border:0;background:transparent;text-align:left;padding:0;font:inherit;color:inherit}
+.workout-card h3{font-size:16px;margin:0 0 5px}
+.workout-card .count{font-size:11px;color:var(--muted)}
+.preview-head{position:sticky;top:0;background:#fff;z-index:2;padding-bottom:8px}
+.preview-item{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+.num{min-width:24px;height:24px;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center}
+@media(max-width:430px){.workout-library{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -29,7 +39,7 @@ button.primary,button.secondary,button.danger{border:0;border-radius:10px;paddin
 <nav id="tabs"></nav>
 <main id="app"></main>
 <script>
-const program={
+let program={
 1:{name:"Lower-body power",type:"GYM",ex:[
 ["Broad jumps","3×3","Bodyweight — max distance",""],
 ["Trap-bar deadlift","4×3","80–85% 1RM",""],
@@ -78,6 +88,13 @@ const program={
 ["Post-game recovery","5–10 min","Easy mobility",""]
 ]}
 };
+
+// Load user-created/edited training days while preserving the built-in program.
+try {
+  const savedProgram = JSON.parse(localStorage.getItem("athleticBaseProgram") || "null");
+  if (savedProgram && typeof savedProgram === "object") program = savedProgram;
+} catch(e) {}
+
 const weekdayDefault={0:4,1:2,2:7,3:7,4:1,5:3,6:3};
 let week=+localStorage.getItem("week")||1, day=+localStorage.getItem("day")||weekdayDefault[new Date().getDay()]||2;
 let phase=localStorage.getItem("phase")||"Build";
@@ -93,7 +110,8 @@ function save(){
   localStorage.setItem("day",day);
   localStorage.setItem("phase",phase);
   localStorage.setItem("cycleStart",cycleStart);
-  const snapshot={version:2,savedAt:new Date().toISOString(),week,day,phase,cycleStart,log,body,goals,markers:JSON.parse(localStorage.getItem("markers")||"{}")};
+  localStorage.setItem("athleticBaseProgram",JSON.stringify(program));
+  const snapshot={version:3,savedAt:new Date().toISOString(),week,day,phase,cycleStart,log,body,goals,markers:JSON.parse(localStorage.getItem("markers")||"{}")};
   localStorage.setItem("athleticBaseAutoBackup",JSON.stringify(snapshot));
 }
 function weekPhase(w){let n=w-cycleStart; if(n<0)n=0; let pos=n%6; return pos===4?"Deload":pos===5?"Testing":"Build"}
@@ -107,10 +125,26 @@ function recommendation(d,i){let ex=program[d].ex[i], vals=[]; for(let w=week-1;
  return step?`Last: ${raw} → target about ${num+step} kg if all reps were clean`:`Last: ${raw} → beat reps, distance or quality before adding load`;
 }
 function k(d,i,w=week){return `${w}-${d}-${i}`}
-function renderTabs(){tabs.innerHTML="";["Today","Day 1","Day 2","Day 3","Run","Field","Sport","Progress"].forEach((x,i)=>{let b=document.createElement("button");b.textContent=x;b.className=((i===0&&!location.hash)||([1,2,3].includes(i)&&day===i&&!location.hash)||i>3&&location.hash===x.toLowerCase())?"active":"";b.onclick=()=>{if(i===0){location.hash="";render()}else if(i<=3){location.hash="";day=i;save();render()}else{location.hash=x.toLowerCase();render()}};tabs.appendChild(b)})}
+function lastSession(d,i){
+  for(let w=week-1;w>=Math.max(1,week-12);w--){
+    const v=log[k(d,i,w)];
+    if(v && (v.weight || v.result || v.rpe || v.notes)) return {week:w,v};
+  }
+  return null;
+}
+function historySummary(d,i){
+  const last=lastSession(d,i);
+  if(!last) return `<div class="tiny">Last session: <b>No previous entry</b></div>`;
+  const parts=[];
+  if(last.v.weight) parts.push(last.v.weight);
+  if(last.v.result) parts.push(last.v.result);
+  if(last.v.rpe) parts.push(`RPE ${last.v.rpe}`);
+  return `<div class="tiny">Last session (Week ${last.week}): <b>${parts.join(" • ") || "Logged"}</b></div>`;
+}
+function renderTabs(){tabs.innerHTML="";["Today","Day 1","Day 2","Day 3","Run","Field","Sport","Progress","Program"].forEach((x,i)=>{let b=document.createElement("button");b.textContent=x;b.className=((i===0&&!location.hash)||([1,2,3].includes(i)&&day===i&&!location.hash)||i>3&&location.hash===x.toLowerCase())?"active":"";b.onclick=()=>{if(i===0){location.hash="";render()}else if(i<=3){location.hash="";day=i;save();render()}else{location.hash=x.toLowerCase();render()}};tabs.appendChild(b)})}
 function workout(d=day){
 let p=program[d];app.innerHTML=`<div class="card"><div class="weeknav"><div><h2>Week ${week} • ${p.name}</h2><div class="muted">${p.type}</div></div><span class="tag">${p.type}</span></div></div>`;
-p.ex.forEach((e,i)=>{let v=log[k(d,i)]||{};app.innerHTML+=`<div class="card exercise"><div class="row"><div><h3>${e[0]}</h3><div class="muted">${e[1]} • ${e[2]}</div><div class="tiny">💡 ${recommendation(d,i)}</div></div>${v.done?'<span class="done">✓</span>':''}</div>
+p.ex.forEach((e,i)=>{let v=log[k(d,i)]||{};app.innerHTML+=`<div class="card exercise"><div class="row"><div><h3>${e[0]}</h3><div class="muted">${e[1]} • ${e[2]}</div><div class="tiny">💡 ${recommendation(d,i)}</div>${historySummary(d,i)}</div></div>${v.done?'<span class="done">✓</span>':''}</div>
 <div class="grid"><div><label>Weight / load / time</label><input id="w${i}" value="${v.weight||e[3]||""}" placeholder="Enter result"></div><div><label>Reps / distance / time</label><input id="r${i}" value="${v.result||""}" placeholder="e.g. 4×3"></div></div>
 <div class="grid3"><div><label>RPE</label><input id="p${i}" value="${v.rpe||""}" placeholder="1–10"></div><div><label>Best result?</label><select id="pr${i}"><option value="">No</option><option ${v.pr?"selected":""}>PR</option></select></div><div><label>Notes</label><input id="n${i}" value="${v.notes||""}" placeholder="Feel / speed"></div></div>
 <div class="actions"><button class="primary" onclick="mark(${d},${i})">${v.done?"Update":"Save"}</button><button class="secondary" onclick="clearEx(${d},${i})">Clear</button></div></div>`});
@@ -132,7 +166,16 @@ app.innerHTML=`<div class="card"><h2>Week ${week} dashboard</h2><div class="mute
 ["Fri","Full body*"],["Sat","Full body*"],["Sun","Run"]
 ].map((x,i)=>`<div class="daycell ${new Date().getDay()===((i+1)%7)?"on":""}">${x[0]}<br><b>${x[1]}</b></div>`).join("")}</div>
 <div class="tiny" style="margin-top:9px">* Full-body session is Friday or Saturday — choose the day that best fits recovery. Field speed/plyometrics is optional whenever you are fresh.</div></div>
-<div class="card"><h2>Start today's session</h2><div class="muted">Day ${day}: ${program[day].name}</div><div class="actions"><button class="primary" onclick="location.hash='';render()">Start workout</button></div></div>
+<div class="card"><h2>Today's session</h2><div class="muted">Day ${day}: ${program[day].name}</div><div class="actions"><button class="primary" onclick="startWorkout(${day})">Start workout</button></div></div>
+<div class="card" id="workoutLibrary"><div class="row"><div><h2>Workout library</h2><div class="muted">Preview any session without starting it.</div></div><button class="secondary" onclick="location.hash='program'">Edit program</button></div>
+<div class="workout-library">
+${Object.entries(program).map(([id,p])=>`<div class="workout-card"><button onclick="previewWorkout(${id})"><h3>${p.name}</h3><div class="muted">${p.type} • ${p.ex.length} exercise${p.ex.length===1?"":"s"}</div><div class="count">Tap to view exercises →</div></button></div>`).join("")}
+</div></div>
+<div class="card hidden" id="workoutPreview">
+<div class="preview-head"><div class="row"><div><h2 id="previewTitle">Workout</h2><div class="muted" id="previewMeta"></div></div><button class="secondary" onclick="closeWorkoutPreview()">Close</button></div></div>
+<div id="previewExercises"></div>
+<div class="actions"><button class="primary" id="previewStartBtn">Start this workout</button></div>
+</div>
 <div class="card"><h2>Quick body-weight check</h2><div class="grid"><div><label>Weight (kg)</label><input id="bw" placeholder="e.g. 90"></div><div><label>Optional note</label><input id="bn" placeholder="Morning / after training"></div></div><div class="actions"><button class="primary" onclick="addBody()">Save weight</button></div></div>
 <div class="card"><h2>Goals</h2><div class="grid"><div><label>Target weight (kg)</label><input id="gw" value="${goals.weight}"></div><div><label>Target 5 km</label><input id="g5" value="${goals.fiveK}" placeholder="e.g. 22:00"></div><div><label>Target sprint</label><input id="gs" value="${goals.sprint}" placeholder="e.g. 20 m"></div><div><label>Target jump</label><input id="gj" value="${goals.jump}" placeholder="e.g. 2.6 m"></div></div><div class="actions"><button class="primary" onclick="saveGoals()">Save goals</button></div></div>`;
 }
@@ -140,8 +183,31 @@ function addBody(){let x=parseFloat(document.getElementById("bw").value);if(!x)r
 function saveGoals(){goals={weight:document.getElementById("gw").value,fiveK:document.getElementById("g5").value,sprint:document.getElementById("gs").value,jump:document.getElementById("gj").value};save();render()}
 function savePhase(){phase=document.getElementById("phaseSel").value;save();render()}
 function startNewCycle(){cycleStart=week;phase="Build";save();render()}
+function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function programEditor(){
+  const ids=Object.keys(program).map(Number).sort((a,b)=>a-b);
+  app.innerHTML=`<div class="card"><div class="row"><div><h2>🛠️ Edit program</h2><div class="muted">Add training days and exercises yourself. Your workout history stays on the device.</div></div><button class="primary" onclick="addTrainingDay()">+ New day</button></div></div>
+  ${ids.map(id=>{const p=program[id];return `<div class="card"><div class="row"><div><h2>Day ${id}</h2></div><button class="danger" onclick="deleteTrainingDay(${id})">Delete day</button></div>
+  <div class="grid"><div><label>Day name</label><input id="dn${id}" value="${esc(p.name)}"></div><div><label>Type</label><select id="dt${id}">${["GYM","RUN","FIELD","SPORT","RECOVERY","OTHER"].map(t=>`<option ${p.type===t?"selected":""}>${t}</option>`).join("")}</select></div></div>
+  <div class="actions"><button class="secondary" onclick="saveDayDetails(${id})">Save day details</button></div>
+  <h3 style="margin-top:16px">Exercises</h3>
+  ${p.ex.map((e,i)=>`<div class="exercise"><div class="row"><b>${i+1}. ${esc(e[0])}</b><button class="danger" onclick="deleteExercise(${id},${i})">Delete</button></div>
+  <div class="grid"><div><label>Exercise</label><input id="en${id}-${i}" value="${esc(e[0])}"></div><div><label>Sets / reps</label><input id="es${id}-${i}" value="${esc(e[1])}"></div><div><label>Prescription / notes</label><input id="ed${id}-${i}" value="${esc(e[2])}"></div><div><label>Baseline (optional)</label><input id="eb${id}-${i}" value="${esc(e[3])}"></div></div>
+  <div class="actions"><button class="secondary" onclick="saveExercise(${id},${i})">Save exercise</button></div></div>`).join("")}
+  <div class="card" style="background:#f8fafc;margin-top:10px"><h3>+ Add exercise</h3><div class="grid"><div><label>Exercise</label><input id="newen${id}" placeholder="e.g. Incline DB press"></div><div><label>Sets / reps</label><input id="newes${id}" placeholder="3×8"></div><div><label>Prescription / notes</label><input id="newed${id}" placeholder="RPE 7–8"></div><div><label>Baseline (optional)</label><input id="neweb${id}" placeholder="e.g. 30 kg"></div></div><div class="actions"><button class="primary" onclick="addExercise(${id})">Add exercise</button></div></div>
+  </div>`}).join("")}
+  <div class="card"><h2>💾 Data safety</h2><div class="muted">Program changes are saved on this iPhone automatically. Use Progress → Export backup before making major changes if you want an extra copy.</div></div>`;
+}
+function saveProgram(){localStorage.setItem("athleticBaseProgram",JSON.stringify(program));}
+function saveDayDetails(id){program[id].name=document.getElementById("dn"+id).value.trim()||program[id].name;program[id].type=document.getElementById("dt"+id).value;saveProgram();save();render();}
+function addExercise(id){const name=document.getElementById("newen"+id).value.trim();if(!name){alert("Enter an exercise name first.");return;}program[id].ex.push([name,document.getElementById("newes"+id).value.trim()||"3×8",document.getElementById("newed"+id).value.trim()||"",document.getElementById("neweb"+id).value.trim()||""]);saveProgram();save();render();location.hash="program";render();}
+function saveExercise(id,i){program[id].ex[i]=[document.getElementById(`en${id}-${i}`).value.trim()||program[id].ex[i][0],document.getElementById(`es${id}-${i}`).value.trim(),document.getElementById(`ed${id}-${i}`).value.trim(),document.getElementById(`eb${id}-${i}`).value.trim()];saveProgram();save();render();location.hash="program";render();}
+function deleteExercise(id,i){if(!confirm(`Delete ${program[id].ex[i][0]}?`))return;delete log[k(id,i,week)];program[id].ex.splice(i,1);saveProgram();save();render();location.hash="program";render();}
+function addTrainingDay(){const ids=Object.keys(program).map(Number);const id=(ids.length?Math.max(...ids):0)+1;program[id]={name:`New training day ${id}`,type:"GYM",ex:[]};saveProgram();save();render();location.hash="program";render();}
+function deleteTrainingDay(id){if(Object.keys(program).length<=1){alert("Keep at least one training day.");return;}if(!confirm(`Delete Day ${id}: ${program[id].name}?`))return;delete program[id];saveProgram();save();if(day===id)day=1;render();location.hash="program";render();}
 function progress(){let prs=Object.values(log).filter(x=>x.pr);app.innerHTML=`<div class="card"><h2>📈 Performance</h2><div class="muted">Phase: <b>${phase}</b> • Test results can be compared across cycles.</div><div class="statgrid"><div class="stat"><b>${prs.length}</b><span class="muted">PRs</span></div><div class="stat"><b>${Object.keys(log).length}</b><span class="muted">Logged exercises</span></div><div class="stat"><b>${body.length?body[body.length-1].weight:"—"}</b><span class="muted">Latest kg</span></div><div class="stat"><b>${week}</b><span class="muted">Week</span></div></div></div>
 <div class="card"><h2>Strength baseline</h2><ul class="list"><li>Bench press — <b>100 kg × 4</b></li><li>Push press — <b>60 kg × 3</b></li><li>Weighted chin-up — <b>+10 kg × 5</b></li><li>Single-arm DB row — <b>37.5 kg</b></li><li>Med-ball chest pass — <b>9 kg</b></li><li>Landmine rotation — <b>10 kg</b></li><li>Farmer carry — <b>80 kg</b></li></ul></div>
+<div class="card"><h2>📚 Exercise history</h2><div class="muted">Your most recent saved result for each exercise. Open a workout to see last session beside the entry fields.</div>${Object.entries(program).flatMap(([id,p])=>p.ex.map((e,i)=>{const last=lastSession(Number(id),i);return last?`<div class="exercise"><div class="row"><b>${esc(e[0])}</b><span class="pr">Week ${last.week}</span></div><div class="muted">${esc([last.v.weight,last.v.result,last.v.rpe?`RPE ${last.v.rpe}`:""].filter(Boolean).join(" • "))}</div></div>`:""})).join("")||`<div class="muted">No exercise history yet.</div>`}</div>
 <div class="card"><h2>🧪 Week 6 testing plan</h2>
 <div class="muted">Week 5 is the deload. Use Week 6 to test fresh, clean performance. Keep touch footy easy or skip sessions that interfere with testing.</div>
 <ul class="list">
@@ -174,7 +240,7 @@ function saveMarkers(){
   save(); render();
 }
 function exportData(){
-  let all={version:2,savedAt:new Date().toISOString(),week,day,phase,cycleStart,log,body,goals,markers:JSON.parse(localStorage.getItem("markers")||"{}")};
+  let all={version:3,savedAt:new Date().toISOString(),week,day,phase,cycleStart,log,body,goals,markers:JSON.parse(localStorage.getItem("markers")||"{}")};
   let blob=new Blob([JSON.stringify(all,null,2)],{type:"application/json"});
   let a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="athletic-base-backup.json"; a.click();
@@ -209,70 +275,22 @@ function restoreAutoBackup(){
   }catch(e){alert("The auto-save backup could not be restored.");}
 }
 function resetAll(){if(confirm("Delete all workout data and backups?")){localStorage.clear();location.reload()}}
-function render(){renderTabs();let h=location.hash;if(h==="#progress")progress();else if(h==="#run")workout(4);else if(h==="#field")workout(5);else if(h==="#sport")workout(7);else if(h==="#recovery")workout(6);else if(h==="#gym")workout(1);else if(h==="")today();else workout(day)}
+function render(){renderTabs();let h=location.hash;if(h==="#progress")progress();else if(h==="#program")programEditor();else if(h==="#run")workout(4);else if(h==="#field")workout(5);else if(h==="#sport")workout(7);else if(h==="#recovery")workout(6);else if(h==="#gym")workout(1);else if(h==="")today();else workout(day)}
 window.addEventListener("hashchange",render);render();
 
-const workoutPreviewData = {
-  1: {
-    title:"Upper Body Power",
-    meta:"Monday • Upper body + Touch footy",
-    exercises:[
-      ["Med-ball chest pass","4 × 3","Week 1: 9 kg • Throw explosively"],
-      ["Push press","4 × 3","Week 1: 60 kg • Crisp reps"],
-      ["Bench press","4 × 4","Week 1: 100 kg"],
-      ["Weighted chin-up","3 × 5","+10 kg Week 1"],
-      ["Single-arm DB row","3 × 6–8","37.5 kg Week 1"],
-      ["Landmine rotation","3 × 5 / side","10 kg Week 1 • Explosive"],
-      ["Farmer carry","3 × 30–40 m","80 kg Week 1"]
-    ]
-  },
-  2: {
-    title:"Lower Body Power",
-    meta:"Thursday • Lower body",
-    exercises:[
-      ["Broad jumps","3 × 3","Bodyweight • Max distance with quality"],
-      ["Trap-bar deadlift","4 × 3","80–85% 1RM • Powerful reps"],
-      ["Bulgarian split squat","3 × 5 / leg","RPE 7–8 • ~2 reps in reserve"],
-      ["Squat","3 × 6","70–75% 1RM"],
-      ["Nordic curl","3 × 4–6","Bodyweight / assisted"],
-      ["Pallof press","3 × 8 / side","Moderate • Strict"],
-      ["Sled push","4 × 15–20 m","Heavy but don't crawl"]
-    ]
-  },
-  3: {
-    title:"Full Body Power",
-    meta:"Friday or Saturday • Full body",
-    exercises:[
-      ["Box jumps","4 × 3","Explosive • Quality landings"],
-      ["Hang power clean","4 × 3","60–70% 1RM"],
-      ["Front-foot elevated split squat","3 × 6 / leg","RPE 7–8 • ~2 reps in reserve"],
-      ["Hip thrust","3 × 5","75–80% 1RM"],
-      ["Single-leg RDL","3 × 6 / leg","Moderate-heavy • 2–3 reps in reserve"],
-      ["Rotational med-ball throw","4 × 3 / side","2–5 kg • Explosive"],
-      ["Copenhagen plank","3 × 20–30 sec / side","Controlled"]
-    ]
-  }
-};
-
 function previewWorkout(id){
-  const w=workoutPreviewData[id];
-  if(!w)return;
-  document.getElementById("previewTitle").textContent=w.title;
-  document.getElementById("previewMeta").textContent=w.meta;
-  document.getElementById("previewExercises").innerHTML =
-    '<div style="margin-top:12px">'+w.exercises.map((e,i)=>
-      `<div class="card" style="margin:8px 0;padding:12px">
-        <b>${i+1}. ${e[0]}</b>
-        <div><strong>${e[1]}</strong></div>
-        <div class="muted">${e[2]}</div>
-      </div>`).join("")+'</div>';
-  document.getElementById("workoutPreview").style.display="block";
-  document.getElementById("workoutPreview").scrollIntoView({behavior:"smooth",block:"start"});
+  const p=program[id];
+  if(!p)return;
+  document.getElementById("previewTitle").textContent=p.name;
+  document.getElementById("previewMeta").textContent=`${p.type} • Week ${week}`;
+  document.getElementById("previewExercises").innerHTML=p.ex.map((e,i)=>`<div class="preview-item"><div class="num">${i+1}</div><div><b>${esc(e[0])}</b><div><strong>${esc(e[1])}</strong></div><div class="muted">${esc(e[2])}${e[3]?` • Baseline: ${esc(e[3])}`:""}</div>${historySummary(Number(id),i)}</div></div>`).join("");
+  const box=document.getElementById("workoutPreview");
+  if(!box)return;
+  box.classList.remove("hidden");
+  document.getElementById("previewStartBtn").onclick=()=>startWorkout(Number(id));
+  box.scrollIntoView({behavior:"smooth",block:"start"});
 }
-function closeWorkoutPreview(){
-  document.getElementById("workoutPreview").style.display="none";
-}
-
+function closeWorkoutPreview(){document.getElementById("workoutPreview").classList.add("hidden");}
 </script>
 </body>
 </html>
